@@ -1,0 +1,30 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Inside the compose network the app reaches Postgres by the SERVICE
+      # NAME "db" on the CONTAINER port 5432 — not localhost:5433. Same lesson
+      # as the port fix, from the other direction.
+      DATABASE_URL: postgresql+asyncpg://appuser:devpassword@db:5432/enterprise_ai
+    volumes:
+      - ./src:/code/src
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir src --reload
+
+  # Postgres runs now and is ready — we WIRE the app to it in Phase 2.
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: enterprise_ai
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data # keeps data across restarts
+
+volumes:
+  pgdata:
