@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from app.api import health, organizations, users
 
 from fastapi import FastAPI
 
@@ -36,3 +37,5 @@ app = FastAPI(
 # Attach the health router. Every new feature area later = another router
 # and another include_router line here.
 app.include_router(health.router)
+app.include_router(organizations.router)
+app.include_router(users.router)
