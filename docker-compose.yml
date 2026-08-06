@@ -10,6 +10,7 @@ services:
       # NAME "db" on the CONTAINER port 5432 — not localhost:5433. Same lesson
       # as the port fix, from the other direction.
       DATABASE_URL: postgresql+asyncpg://appuser:devpassword@db:5432/enterprise_ai
+      MINIO_ENDPOINT: http://minio:9000
     volumes:
       - ./src:/code/src
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir src --reload
@@ -26,5 +27,46 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data # keeps data across restarts
 
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"   # standard Redis port
+    # No volume needed — our job queue is transient. If Redis restarts and a
+    # queued job is lost, that's acceptable for now (we'll discuss durability
+    # trade-offs later). We're using Redis purely as a message broker here.
+
+
+  minio:
+    image: minio/minio
+    # "server /data" runs MinIO storing blobs under /data; "--console-address"
+    # puts its web admin UI on port 9001.
+    command: server /data --console-address ":9001"
+    environment:
+      # These are the "access key / secret key" — MinIO's equivalent of an
+      # AWS username/password. Dev-only values; real deployments use secrets.
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # the S3 API (what boto3 talks to)
+      - "9001:9001"   # the web console (what YOU log into in a browser)
+    volumes:
+      - miniodata:/data   # persist blobs across restarts, like pgdata does
+  worker:
+    build: .
+    command: celery -A app.worker.celery_app.celery_app worker --loglevel=info
+    environment:
+      # Same overrides the API uses — the worker also talks to db, minio, redis
+      # by service name inside the compose network.
+      DATABASE_URL: postgresql+asyncpg://appuser:devpassword@db:5432/enterprise_ai
+      MINIO_ENDPOINT: http://minio:9000
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      - ./src:/code/src
+    depends_on:
+      - db
+      - minio
+      - redis
 volumes:
   pgdata:
+  miniodata:

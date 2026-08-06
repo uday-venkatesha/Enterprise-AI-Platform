@@ -1,11 +1,11 @@
 import logging
 from contextlib import asynccontextmanager
-from app.api import health, organizations, users
+from app.api import auth, documents, health, organizations, users
 
 from fastapi import FastAPI
 
 from app.config import settings
-from app.api import health
+from app.core.storage import ensure_bucket_exists  # add import at top
 
 # Configure logging once, at the top level. Everywhere else we just call
 # logging.getLogger(__name__) and messages flow through this config.
@@ -23,10 +23,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting %s (env=%s)", settings.app_name, settings.environment)
+    ensure_bucket_exists()   # NEW: make sure the documents bucket is ready
     yield
     logger.info("Shutting down %s", settings.app_name)
 
-
+    
 # The application object. Uvicorn looks for this variable ("app") to run it.
 app = FastAPI(
     title=settings.app_name,
@@ -36,6 +37,8 @@ app = FastAPI(
 
 # Attach the health router. Every new feature area later = another router
 # and another include_router line here.
+app.include_router(auth.router)
 app.include_router(health.router)
 app.include_router(organizations.router)
 app.include_router(users.router)
+app.include_router(documents.router)

@@ -7,6 +7,7 @@ WORKDIR /code
 # Copy ONLY requirements first, then install. Docker caches this layer, so
 # rebuilds are fast unless your dependencies actually change.
 COPY requirements.txt .
+RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Now copy the source. (Changing source won't bust the dependency cache above.)
