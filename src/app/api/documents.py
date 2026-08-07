@@ -11,6 +11,7 @@ from app.models.users import User
 from app.schemas.document import DocumentRead
 from app.services import document as document_service
 from app.worker.tasks import process_document
+from app.api.deps import get_current_organization_id
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -83,4 +84,32 @@ async def upload_document(
     # picks it up moments later in its own process. This one line is the whole
     # point of 3b: the response returns now; processing happens out of band.
     process_document.delay(str(document.id))
+    return document
+
+
+@router.get("", response_model=list[DocumentRead])
+async def list_documents(
+    db: AsyncSession = Depends(get_db),
+    # Same one-line trick as GET /users: this dependency forces authentication
+    # AND yields the caller's org id, which the client cannot override.
+    org_id: uuid.UUID = Depends(get_current_organization_id),
+):
+    return await document_service.list_documents_in_org(db, org_id)
+
+
+@router.get("/{document_id}", response_model=DocumentRead)
+async def get_document(
+    # A PATH PARAMETER: whatever comes after /documents/ in the URL is captured
+    # here as document_id. FastAPI validates it's a real uuid automatically —
+    # a garbage id gets a 422 before your code even runs.
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    org_id: uuid.UUID = Depends(get_current_organization_id),
+):
+    document = await document_service.get_document_for_org(db, document_id, org_id)
+    if document is None:
+        # Not found OR not yours — same 404 either way. We deliberately DON'T
+        # say "exists but forbidden" (a 403), because that would leak that a
+        # document with that id exists in some other org. 404 reveals nothing.
+        raise HTTPException(status_code=404, detail="Document not found")
     return document

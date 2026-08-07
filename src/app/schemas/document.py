@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-
+from app.models.document import DocumentStatus
 # What we return after upload / when listing. The client gets metadata and the
 # id, but never the raw bytes — those are fetched separately when needed.
 class DocumentRead(BaseModel):
@@ -13,5 +13,6 @@ class DocumentRead(BaseModel):
     filename: str
     content_type: str
     size_bytes: int
+    status: DocumentStatus
     organization_id: uuid.UUID
     created_at: datetime
