@@ -7,6 +7,7 @@ import uuid
 from collections.abc import Sequence
 
 from sqlalchemy import select
+from app.models.chunk import Chunk   # add to imports
 
 async def create_document(
     db: AsyncSession,
@@ -63,3 +64,26 @@ async def get_document_for_org(
         )
     )
     return result.scalar_one_or_none()
+
+def create_chunks_sync(
+    db,
+    *,
+    document_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    chunk_texts: list[str],
+    embeddings: list[list[float]],   # NEW: one vector per chunk, same order
+) -> int:
+    # zip pairs each chunk's text with its vector; enumerate numbers them.
+    chunk_objects = [
+        Chunk(
+            document_id=document_id,
+            organization_id=organization_id,
+            chunk_index=index,
+            content=content,
+            embedding=embedding,     # NEW
+        )
+        for index, (content, embedding) in enumerate(zip(chunk_texts, embeddings))
+    ]
+    db.add_all(chunk_objects)
+    db.commit()
+    return len(chunk_objects)

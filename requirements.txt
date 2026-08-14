@@ -159,3 +159,8 @@ vine==5.1.0
 wcwidth==0.8.2
     # via prompt-toolkit
 pypdf
+python-docx
+python-pptx
+openpyxl
+openai
+pgvector

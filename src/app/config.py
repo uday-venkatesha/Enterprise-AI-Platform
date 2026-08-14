@@ -43,4 +43,12 @@ class Settings(BaseSettings):
     # a different logical database (/1 vs /0) to keep them tidy.
     celery_result_backend: str = "redis://localhost:6379/1"
 
+    # --- OpenAI (NEW) ---
+    # API key for OpenAI — read from OPENAI_API_KEY env var / .env file.
+    # No default: if this is missing the app should fail loudly at startup.
+    openai_api_key: str
+    # Which embedding model to use. text-embedding-3-small is fast and cheap;
+    # its output dimension is 1536, matching the Vector(1536) column on chunks.
+    embedding_model: str = "text-embedding-3-small"
+
 settings = Settings()
