@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from app.api import auth, documents, health, organizations, users
+from app.api import auth, documents, health, organizations, search, users
 
 from fastapi import FastAPI
 
@@ -42,3 +43,4 @@ app.include_router(health.router)
 app.include_router(organizations.router)
 app.include_router(users.router)
 app.include_router(documents.router)
+app.include_router(search.router)   # NEW
