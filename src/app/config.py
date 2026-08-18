@@ -50,5 +50,6 @@ class Settings(BaseSettings):
     # Which embedding model to use. text-embedding-3-small is fast and cheap;
     # its output dimension is 1536, matching the Vector(1536) column on chunks.
     embedding_model: str = "text-embedding-3-small"
+    chat_model: str = "gpt-5-mini"
 
 settings = Settings()

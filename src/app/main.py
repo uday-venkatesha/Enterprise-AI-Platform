@@ -1,9 +1,8 @@
 import logging
 from contextlib import asynccontextmanager
-from app.api import auth, documents, health, organizations, users
-from app.api import auth, documents, health, organizations, search, users
 
 from fastapi import FastAPI
+from app.api import auth, chat, documents, health, organizations, search, users
 
 from app.config import settings
 from app.core.storage import ensure_bucket_exists  # add import at top
@@ -43,4 +42,5 @@ app.include_router(health.router)
 app.include_router(organizations.router)
 app.include_router(users.router)
 app.include_router(documents.router)
-app.include_router(search.router)   # NEW
+app.include_router(search.router)   
+app.include_router(chat.router)
