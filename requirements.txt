@@ -164,3 +164,4 @@ python-pptx
 openpyxl
 openai
 pgvector
+asyncpg

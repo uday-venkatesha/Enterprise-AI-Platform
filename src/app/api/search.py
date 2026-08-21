@@ -29,12 +29,10 @@ async def search(
     # essential — you can only compare vectors from the same embedding model.
     # embed_texts takes a list and returns a list, so we pass [query] and take [0].
     query_embedding = embed_texts([body.query])[0]
-
-    # 2) Ask pgvector for the nearest chunks within this org.
-    chunks = await search_service.search_chunks(
+    return await search_service.hybrid_search_chunks(
         db,
         organization_id=org_id,
+        query=body.query,
         query_embedding=query_embedding,
         limit=body.limit,
     )
-    return chunks

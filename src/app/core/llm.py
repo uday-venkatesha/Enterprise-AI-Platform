@@ -1,4 +1,5 @@
 from openai import OpenAI
+import json   # add to imports at the top
 
 from app.config import settings
 from app.models.chunk import Chunk
@@ -50,3 +51,54 @@ def generate_answer(question: str, chunks: list[Chunk]) -> str:
 
     # The model's reply text lives here.
     return response.choices[0].message.content
+RERANK_SYSTEM_PROMPT = """You are a search reranking assistant.
+You are given a user question and a numbered list of passages.
+Rank the passages from MOST to LEAST relevant to answering the question.
+
+Respond with ONLY a JSON array of the passage numbers in ranked order, best first.
+Example: [3, 1, 4]
+Do not include any other text, explanation, or formatting."""
+
+
+def rerank_chunks(question: str, chunks: list["Chunk"], top_n: int = 5) -> list["Chunk"]:
+    # Nothing to do for an empty or tiny list — skip the API call.
+    if len(chunks) <= 1:
+        return chunks
+
+    # Number the candidates [1], [2], ... so the model can refer to them.
+    numbered = "\n\n".join(
+        f"[{i}] {chunk.content}" for i, chunk in enumerate(chunks, start=1)
+    )
+    user_message = f"Question: {question}\n\nPassages:\n\n{numbered}"
+
+    response = _client.chat.completions.create(
+        model=settings.chat_model,
+        messages=[
+            {"role": "system", "content": RERANK_SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+    )
+    raw = response.choices[0].message.content.strip()
+
+    # PARSE the JSON array of positions. We wrap this defensively: if the model
+    # ever returns something unparseable, we fall back to the original order
+    # rather than crashing. Never trust free-form model output blindly.
+    try:
+        order = json.loads(raw)
+        # Convert the 1-based positions back into chunk objects, ignoring any
+        # out-of-range or duplicate numbers the model might return.
+        reranked: list = []
+        seen: set = set()
+        for position in order:
+            index = position - 1                       # model is 1-based; lists are 0-based
+            if 0 <= index < len(chunks) and index not in seen:
+                seen.add(index)
+                reranked.append(chunks[index])
+        # If parsing produced nothing usable, fall back to the input order.
+        if not reranked:
+            reranked = chunks
+    except (json.JSONDecodeError, TypeError, ValueError):
+        reranked = chunks
+
+    # Keep only the best top_n.
+    return reranked[:top_n]
